@@ -2,6 +2,22 @@ from typing import Annotated, NotRequired, TypedDict
 
 from langchain.agents import AgentState
 
+# Maximum messages to retain in state to prevent checkpoint bloat
+MAX_MESSAGES = 50
+
+
+def truncate_messages(old: list, new: list) -> list:
+    """Reducer for messages list - keeps only the most recent messages.
+
+    Instead of accumulating all messages indefinitely (which causes checkpoint
+    bloat), this reducer only retains the last MAX_MESSAGES entries.
+    The truncation happens after combining old and new messages.
+    """
+    combined = old + new
+    if len(combined) > MAX_MESSAGES:
+        return combined[-MAX_MESSAGES:]
+    return combined
+
 
 class SandboxState(TypedDict):
     sandbox_id: NotRequired[str | None]
@@ -46,6 +62,9 @@ def merge_viewed_images(existing: dict[str, ViewedImageData] | None, new: dict[s
 
 
 class ThreadState(AgentState):
+    # Override messages with truncate reducer to prevent state bloat
+    # AgentState uses add_messages which accumulates all messages indefinitely
+    messages: Annotated[list, truncate_messages]
     sandbox: NotRequired[SandboxState | None]
     thread_data: NotRequired[ThreadDataState | None]
     title: NotRequired[str | None]

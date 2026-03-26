@@ -1,6 +1,6 @@
 # DeerFlow - Unified Development Environment
 
-.PHONY: help config config-upgrade check install dev dev-daemon start stop up down clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway
+.PHONY: help config config-upgrade check install dev dev-daemon start stop up down clean docker-init docker-start docker-stop docker-logs docker-logs-frontend docker-logs-gateway cleanup-checkpoints
 
 PYTHON ?= python
 BASH ?= bash
@@ -139,6 +139,14 @@ clean: stop
 	@-rm -rf backend/.langgraph_api 2>/dev/null || true
 	@-rm -rf logs/*.log 2>/dev/null || true
 	@echo "✓ Cleanup complete"
+
+# Cleanup old checkpoints to reduce database size
+cleanup-checkpoints:
+	@echo "Cleaning up old checkpoints..."
+	@$(PYTHON) ./backend/scripts/cleanup_checkpoints.py --size
+	@echo ""
+	@echo "Run with --days N to remove checkpoints older than N days"
+	@echo "Run with --max N to keep only N most recent per thread"
 
 # ==========================================
 # Docker Development Commands

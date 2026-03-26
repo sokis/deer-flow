@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[project]
+name = "deerflow-core"
+version = "0.1.0"
+description = "A minimal AI Agent framework with zero-dependency core"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [
+    { name = "DeerFlow Team", email = "deer-flow@example.com" }
+]
+keywords = ["ai", "agent", "langgraph", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.optional-dependencies]
+langgraph = [
+    "langgraph>=0.2.0",
+    "langchain-core>=0.3.0",
+]
+mcp = [
+    "langchain-mcp-adapters>=0.1.0",
+]
+all = [
+    "deerflow-core[langgraph,mcp]",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
+]
+
+[project.urls]
+Homepage = "https://github.com/bytedance/deer-flow"
+Documentation = "https://github.com/bytedance/deer-flow"
+Repository = "https://github.com/bytedance/deer-flow"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/deerflow_core"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio-mode = "auto"
+testpaths = ["tests"]
