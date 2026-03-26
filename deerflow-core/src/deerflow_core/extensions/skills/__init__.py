@@ -7,6 +7,43 @@ from deerflow_core.core.context import Context
 from deerflow_core.core.skill import Skill, SkillLoader, SkillMetadata
 
 
+def get_skills_prompt_section(skills: list["SkillMetadata"]) -> str:
+    """Generate the skills section for agent system prompt.
+
+    This matches the format used in the main deer-flow project.
+
+    Args:
+        skills: List of skill metadata to include.
+
+    Returns:
+        Formatted skill system prompt section.
+    """
+    if not skills:
+        return ""
+
+    skill_listings = []
+    for meta in skills:
+        skill_listings.append(f"""    <skill>
+        <name>{meta.name}</name>
+        <description>{meta.description}</description>
+    </skill>""")
+
+    return f"""<skill_system>
+You have access to skills that provide optimized workflows for specific tasks.
+
+**Progressive Loading Pattern:**
+1. When a user query matches a skill's use case, immediately call `read_file` on the skill's main file
+2. Read and understand the skill's workflow and instructions
+3. Follow the skill's instructions precisely
+
+**Skills are located at:** /skills
+
+<available_skills>
+{chr(10).join(skill_listings)}
+</available_skills>
+</skill_system>"""
+
+
 class FileSkillLoader(SkillLoader):
     """File-based skill loader.
 
