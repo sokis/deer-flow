@@ -4,6 +4,17 @@ import {
   Conversation,
   ConversationContent,
 } from "@/components/ai-elements/conversation";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { RotateCcw } from "lucide-react";
+import { useState } from "react";
+
 import { useI18n } from "@/core/i18n/hooks";
 import {
   extractContentFromMessage,
@@ -29,21 +40,48 @@ import { MessageListItem } from "./message-list-item";
 import { MessageListSkeleton } from "./skeleton";
 import { SubtaskCard } from "./subtask-card";
 
+function RewindButton({
+  turnIndex,
+  onConfirm,
+  isLoading,
+}: {
+  turnIndex: number;
+  onConfirm: (turnIndex: number) => void;
+  isLoading?: boolean;
+}) {
+  return (
+    <button
+      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-muted rounded absolute -right-8 top-0"
+      onClick={() => onConfirm(turnIndex)}
+      disabled={isLoading}
+      title="回退到此轮之前"
+    >
+      <RotateCcw className="h-4 w-4 text-muted-foreground" />
+    </button>
+  );
+}
+
 export function MessageList({
   className,
   threadId,
   thread,
   paddingBottom = 160,
+  onRewind,
+  isRewinding,
 }: {
   className?: string;
   threadId: string;
   thread: BaseStream<AgentThreadState>;
   paddingBottom?: number;
+  onRewind?: (turnIndex: number) => void;
+  isRewinding?: boolean;
 }) {
   const { t } = useI18n();
   const rehypePlugins = useRehypeSplitWordsIntoSpans(thread.isLoading);
   const updateSubtask = useUpdateSubtask();
   const messages = thread.messages;
+  const [confirmRewindTurn, setConfirmRewindTurn] = useState<number | null>(null);
+  let turnIndex = 0;
   if (thread.isThreadLoading && messages.length === 0) {
     return <MessageListSkeleton />;
   }
@@ -54,15 +92,28 @@ export function MessageList({
       <ConversationContent className="mx-auto w-full max-w-(--container-width-md) gap-8 pt-12">
         {groupMessages(messages, (group) => {
           if (group.type === "human" || group.type === "assistant") {
-            return group.messages.map((msg) => {
-              return (
-                <MessageListItem
-                  key={`${group.id}/${msg.id}`}
-                  message={msg}
-                  isLoading={thread.isLoading}
-                />
-              );
-            });
+            const currentTurnIndex = turnIndex;
+            if (group.type === "human") {
+              turnIndex++;
+            }
+            return (
+              <div key={`${group.id}`} className="group relative">
+                {group.messages.map((msg) => (
+                  <MessageListItem
+                    key={`${group.id}/${msg.id}`}
+                    message={msg}
+                    isLoading={thread.isLoading}
+                  />
+                ))}
+                {group.type === "human" && onRewind && (
+                  <RewindButton
+                    turnIndex={currentTurnIndex}
+                    onConfirm={(idx) => setConfirmRewindTurn(idx)}
+                    isLoading={isRewinding}
+                  />
+                )}
+              </div>
+            );
           } else if (group.type === "assistant:clarification") {
             const message = group.messages[0];
             if (message && hasContent(message)) {
@@ -168,9 +219,9 @@ export function MessageList({
                   {t.subtasks.executing(tasks.size)}
                 </div>,
               );
-              const taskIds = message.tool_calls
-                ?.filter((toolCall) => toolCall.name === "task")
-                .map((toolCall) => toolCall.id);
+              const taskIds = message.tool_calls?.map(
+                (toolCall) => toolCall.id,
+              );
               for (const taskId of taskIds ?? []) {
                 results.push(
                   <SubtaskCard
@@ -200,6 +251,33 @@ export function MessageList({
         })}
         {thread.isLoading && <StreamingIndicator className="my-4" />}
         <div style={{ height: `${paddingBottom}px` }} />
+        <Dialog
+          open={confirmRewindTurn !== null}
+          onOpenChange={(open) => !open && setConfirmRewindTurn(null)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>确认回退</DialogTitle>
+              <DialogDescription>
+                回退将丢失此轮之后的全部进度，是否继续？
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <button onClick={() => setConfirmRewindTurn(null)}>取消</button>
+              <button
+                onClick={() => {
+                  if (confirmRewindTurn !== null) {
+                    onRewind?.(confirmRewindTurn);
+                    setConfirmRewindTurn(null);
+                  }
+                }}
+                disabled={isRewinding}
+              >
+                {isRewinding ? "回退中..." : "确认回退"}
+              </button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </ConversationContent>
     </Conversation>
   );

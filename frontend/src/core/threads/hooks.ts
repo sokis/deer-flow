@@ -16,7 +16,13 @@ import { useUpdateSubtask } from "../tasks/context";
 import type { UploadedFileInfo } from "../uploads";
 import { uploadFiles } from "../uploads";
 
-import type { AgentThread, AgentThreadState } from "./types";
+import type {
+  AgentThread,
+  AgentThreadState,
+  ThreadRunHealth,
+  ThreadProgressKind,
+  ThreadStreamObservability,
+} from "./types";
 
 export type ToolEndEvent = {
   name: string;
@@ -30,6 +36,21 @@ export type ThreadStreamOptions = {
   onStart?: (threadId: string) => void;
   onFinish?: (state: AgentThreadState) => void;
   onToolEnd?: (event: ToolEndEvent) => void;
+  onRewindSuccess?: (filledText: string) => void;
+};
+
+const EMPTY_OBSERVABILITY: ThreadStreamObservability = {
+  activeThreadId: null,
+  requestStartedAt: null,
+  firstResponseAt: null,
+  lastProgressAt: null,
+  finishedAt: null,
+  lastError: null,
+  messageDelta: 0,
+  toolCallCount: 0,
+  subtaskCount: 0,
+  updateCount: 0,
+  lastProgressKind: null,
 };
 
 function getStreamErrorMessage(error: unknown): string {
@@ -55,6 +76,40 @@ function getStreamErrorMessage(error: unknown): string {
   return "Request failed.";
 }
 
+async function getThreadRunHealth(threadId: string): Promise<ThreadRunHealth> {
+  const response = await fetch(
+    `${getBackendBaseURL()}/api/threads/${threadId}/run-health`,
+  );
+  if (!response.ok) {
+    throw new Error("Failed to fetch thread run health.");
+  }
+  return response.json() as Promise<ThreadRunHealth>;
+}
+
+export interface RewindResponse {
+  rewound_to_message_count: number;
+  filled_text: string;
+}
+
+export async function rewindThread(
+  threadId: string,
+  targetTurnIndex: number,
+): Promise<RewindResponse> {
+  const response = await fetch(
+    `${getBackendBaseURL()}/api/threads/${threadId}/rewind`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ target_turn_index: targetTurnIndex }),
+    },
+  );
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: "Rewind failed" }));
+    throw new Error(error.detail ?? `Rewind failed: ${response.status}`);
+  }
+  return response.json() as Promise<RewindResponse>;
+}
+
 export function useThreadStream({
   threadId,
   context,
@@ -62,6 +117,7 @@ export function useThreadStream({
   onStart,
   onFinish,
   onToolEnd,
+  onRewindSuccess,
 }: ThreadStreamOptions) {
   const { t } = useI18n();
   // Track the thread ID that is currently streaming to handle thread changes during streaming
@@ -70,17 +126,20 @@ export function useThreadStream({
   // and to allow access to the current thread id in onUpdateEvent
   const threadIdRef = useRef<string | null>(threadId ?? null);
   const startedRef = useRef(false);
+  const [observability, setObservability] =
+    useState<ThreadStreamObservability>(EMPTY_OBSERVABILITY);
 
   const listeners = useRef({
     onStart,
     onFinish,
     onToolEnd,
+    onRewindSuccess,
   });
 
   // Keep listeners ref updated with latest callbacks
   useEffect(() => {
-    listeners.current = { onStart, onFinish, onToolEnd };
-  }, [onStart, onFinish, onToolEnd]);
+    listeners.current = { onStart, onFinish, onToolEnd, onRewindSuccess };
+  }, [onStart, onFinish, onToolEnd, onRewindSuccess]);
 
   useEffect(() => {
     const normalizedThreadId = threadId ?? null;
@@ -110,6 +169,51 @@ export function useThreadStream({
   const queryClient = useQueryClient();
   const updateSubtask = useUpdateSubtask();
 
+  const setActiveThreadId = useCallback((activeThreadId: string | null) => {
+    setObservability((prev) => ({
+      ...prev,
+      activeThreadId,
+    }));
+  }, []);
+
+  const startObservability = useCallback((activeThreadId: string | null) => {
+    const now = Date.now();
+    setObservability({
+      ...EMPTY_OBSERVABILITY,
+      activeThreadId,
+      requestStartedAt: now,
+    });
+  }, []);
+
+  const markProgress = useCallback(
+    (
+      kind: Exclude<ThreadProgressKind, null>,
+      update?: (prev: ThreadStreamObservability) => ThreadStreamObservability,
+    ) => {
+      const now = Date.now();
+      setObservability((prev) => {
+        const next = update ? update(prev) : prev;
+        return {
+          ...next,
+          lastProgressAt: now,
+          firstResponseAt: next.firstResponseAt ?? now,
+          lastProgressKind: kind,
+        };
+      });
+    },
+    [],
+  );
+
+  const markFailure = useCallback((error: unknown) => {
+    const message = getStreamErrorMessage(error);
+    setObservability((prev) => ({
+      ...prev,
+      finishedAt: Date.now(),
+      lastError: message,
+    }));
+    return message;
+  }, []);
+
   const thread = useStream<AgentThreadState>({
     client: getAPIClient(isMock),
     assistantId: "lead_agent",
@@ -119,9 +223,14 @@ export function useThreadStream({
     onCreated(meta) {
       handleStreamStart(meta.thread_id);
       setOnStreamThreadId(meta.thread_id);
+      setActiveThreadId(meta.thread_id);
     },
     onLangChainEvent(event) {
       if (event.event === "on_tool_end") {
+        markProgress("tool", (prev) => ({
+          ...prev,
+          toolCallCount: prev.toolCallCount + 1,
+        }));
         listeners.current.onToolEnd?.({
           name: event.name,
           data: event.data,
@@ -132,6 +241,12 @@ export function useThreadStream({
       const updates: Array<Partial<AgentThreadState> | null> = Object.values(
         data || {},
       );
+      if (updates.length > 0) {
+        markProgress("update", (prev) => ({
+          ...prev,
+          updateCount: prev.updateCount + 1,
+        }));
+      }
       for (const update of updates) {
         if (update && "title" in update && update.title) {
           void queryClient.setQueriesData(
@@ -169,14 +284,23 @@ export function useThreadStream({
           task_id: string;
           message: AIMessage;
         };
+        markProgress("subtask", (prev) => ({
+          ...prev,
+          subtaskCount: prev.subtaskCount + 1,
+        }));
         updateSubtask({ id: e.task_id, latestMessage: e.message });
       }
     },
     onError(error) {
       setOptimisticMessages([]);
-      toast.error(getStreamErrorMessage(error));
+      toast.error(markFailure(error));
     },
     onFinish(state) {
+      markProgress("finish");
+      setObservability((prev) => ({
+        ...prev,
+        finishedAt: Date.now(),
+      }));
       listeners.current.onFinish?.(state.values);
       void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
     },
@@ -188,6 +312,7 @@ export function useThreadStream({
   const sendInFlightRef = useRef(false);
   // Track message count before sending so we know when server has responded
   const prevMsgCountRef = useRef(thread.messages.length);
+  const lastObservedMessageCountRef = useRef(thread.messages.length);
 
   // Clear optimistic when server messages arrive (count increases)
   useEffect(() => {
@@ -198,6 +323,22 @@ export function useThreadStream({
       setOptimisticMessages([]);
     }
   }, [thread.messages.length, optimisticMessages.length]);
+
+  useEffect(() => {
+    const currentCount = thread.messages.length;
+    const previousCount = lastObservedMessageCountRef.current;
+    if (
+      currentCount > previousCount &&
+      prevMsgCountRef.current <= currentCount &&
+      observability.requestStartedAt
+    ) {
+      markProgress("message", (prev) => ({
+        ...prev,
+        messageDelta: Math.max(currentCount - prevMsgCountRef.current, 0),
+      }));
+    }
+    lastObservedMessageCountRef.current = currentCount;
+  }, [thread.messages.length, observability.requestStartedAt, markProgress]);
 
   const sendMessage = useCallback(
     async (
@@ -214,6 +355,8 @@ export function useThreadStream({
 
       // Capture current count before showing optimistic messages
       prevMsgCountRef.current = thread.messages.length;
+      lastObservedMessageCountRef.current = thread.messages.length;
+      startObservability(threadId);
 
       // Build optimistic files list with uploading status
       const optimisticFiles: FileInMessage[] = (message.files ?? []).map(
@@ -322,10 +465,7 @@ export function useThreadStream({
             }
           } catch (error) {
             console.error("Failed to upload files:", error);
-            const errorMessage =
-              error instanceof Error
-                ? error.message
-                : "Failed to upload files.";
+            const errorMessage = markFailure(error);
             toast.error(errorMessage);
             setOptimisticMessages([]);
             throw error;
@@ -388,6 +528,7 @@ export function useThreadStream({
         );
         void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
       } catch (error) {
+        markFailure(error);
         setOptimisticMessages([]);
         setIsUploading(false);
         throw error;
@@ -395,7 +536,15 @@ export function useThreadStream({
         sendInFlightRef.current = false;
       }
     },
-    [thread, _handleOnStart, t.uploads.uploadingFiles, context, queryClient],
+    [
+      thread,
+      _handleOnStart,
+      t.uploads.uploadingFiles,
+      context,
+      queryClient,
+      markFailure,
+      startObservability,
+    ],
   );
 
   // Merge thread with optimistic messages for display
@@ -407,7 +556,16 @@ export function useThreadStream({
         } as typeof thread)
       : thread;
 
-  return [mergedThread, sendMessage, isUploading] as const;
+  const refreshThread = useCallback(async () => {
+    if (onStreamThreadId) {
+      // Invalidate thread list queries so next fetch gets fresh data.
+      // Note: useStream manages its own state; this only invalidates
+      // TanStack Query cache for thread list/search queries.
+      queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
+    }
+  }, [queryClient, onStreamThreadId]);
+
+  return [mergedThread, sendMessage, isUploading, observability, refreshThread] as const;
 }
 
 export function useThreads(
@@ -476,26 +634,30 @@ export function useThreads(
   });
 }
 
+export function useThreadRunHealth(threadId: string, enabled: boolean) {
+  return useQuery<ThreadRunHealth>({
+    queryKey: ["threads", "run-health", threadId],
+    queryFn: () => getThreadRunHealth(threadId),
+    enabled: enabled && !!threadId,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) {
+        return enabled ? 10000 : false;
+      }
+      return ["waiting", "running", "stuck"].includes(data.truth_phase)
+        ? 10000
+        : false;
+    },
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useDeleteThread() {
   const queryClient = useQueryClient();
   const apiClient = getAPIClient();
   return useMutation({
     mutationFn: async ({ threadId }: { threadId: string }) => {
       await apiClient.threads.delete(threadId);
-
-      const response = await fetch(
-        `${getBackendBaseURL()}/api/threads/${encodeURIComponent(threadId)}`,
-        {
-          method: "DELETE",
-        },
-      );
-
-      if (!response.ok) {
-        const error = await response
-          .json()
-          .catch(() => ({ detail: "Failed to delete local thread data." }));
-        throw new Error(error.detail ?? "Failed to delete local thread data.");
-      }
     },
     onSuccess(_, { threadId }) {
       queryClient.setQueriesData(
@@ -503,16 +665,10 @@ export function useDeleteThread() {
           queryKey: ["threads", "search"],
           exact: false,
         },
-        (oldData: Array<AgentThread> | undefined) => {
-          if (oldData == null) {
-            return oldData;
-          }
+        (oldData: Array<AgentThread>) => {
           return oldData.filter((t) => t.thread_id !== threadId);
         },
       );
-    },
-    onSettled() {
-      void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
     },
   });
 }

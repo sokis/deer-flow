@@ -161,6 +161,84 @@ export interface Translations {
     startConversation: string;
   };
 
+  observability: {
+    title: string;
+    bubbleTitle: string;
+    hint: string;
+    frontendOnlyHint: string;
+    rationale: string;
+    actionPlan: string;
+    activeThread: string;
+    elapsed: string;
+    firstResponse: string;
+    lastProgress: string;
+    outputMessages: string;
+    toolCalls: string;
+    subtasks: string;
+    updates: string;
+    noProgressYet: string;
+    justNow: string;
+    unboundThread: string;
+    expand: string;
+    collapse: string;
+    reconnect: string;
+    refresh: string;
+    stopRun: string;
+    copyThreadId: string;
+    copied: string;
+    activeConclusion: string;
+    recentConclusion: string;
+    backendTruth: string;
+    rawStatus: string;
+    backendProgress: string;
+    nextNodes: string;
+    noNextNode: string;
+    backendConnectedHint: string;
+    statuses: {
+      uploading: string;
+      waiting: string;
+      running: string;
+      silent: string;
+      suspectedStuck: string;
+      completed: string;
+      error: string;
+    };
+    progressKinds: {
+      message: string;
+      tool: string;
+      subtask: string;
+      update: string;
+      finish: string;
+      none: string;
+    };
+    descriptions: {
+      uploading: string;
+      waiting: string;
+      running: string;
+      silent: string;
+      suspectedStuck: string;
+      completed: string;
+      error: string;
+    };
+    reasons: {
+      waitingShort: string;
+      waitingLong: string;
+      silentShort: string;
+      silentLong: string;
+      runningRecent: string;
+      completedRecent: string;
+      errorDetected: string;
+    };
+    actions: {
+      waiting: string;
+      running: string;
+      silent: string;
+      suspectedStuck: string;
+      completed: string;
+      error: string;
+    };
+  };
+
   // Chats
   chats: {
     searchChats: string;
@@ -211,14 +289,6 @@ export interface Translations {
     failed: string;
   };
 
-  // Token Usage
-  tokenUsage: {
-    title: string;
-    input: string;
-    output: string;
-    total: string;
-  };
-  
   // Shortcuts
   shortcuts: {
     searchActions: string;

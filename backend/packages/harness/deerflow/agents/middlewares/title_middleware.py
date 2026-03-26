@@ -1,9 +1,13 @@
 """Middleware for automatic thread title generation."""
 
 import logging
+import re
 from typing import NotRequired, override
 
 from langchain.agents import AgentState
+
+# Regex to strip <thinking> tags from AI message content
+THINK_TAG_RE = re.compile(r"<think>\s*([\s\S]*?)\s*</think>", re.DOTALL)
 from langchain.agents.middleware import AgentMiddleware
 from langgraph.runtime import Runtime
 
@@ -26,7 +30,7 @@ class TitleMiddleware(AgentMiddleware[TitleMiddlewareState]):
 
     def _normalize_content(self, content: object) -> str:
         if isinstance(content, str):
-            return content
+            return THINK_TAG_RE.sub("", content)
 
         if isinstance(content, list):
             parts = [self._normalize_content(item) for item in content]

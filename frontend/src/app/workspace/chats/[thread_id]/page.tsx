@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { type PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { ArtifactTrigger } from "@/components/workspace/artifacts";
@@ -13,14 +13,14 @@ import { ExportTrigger } from "@/components/workspace/export-trigger";
 import { InputBox } from "@/components/workspace/input-box";
 import { MessageList } from "@/components/workspace/messages";
 import { ThreadContext } from "@/components/workspace/messages/context";
+import { StreamObservabilityPanel } from "@/components/workspace/stream-observability-panel";
 import { ThreadTitle } from "@/components/workspace/thread-title";
 import { TodoList } from "@/components/workspace/todo-list";
-import { TokenUsageIndicator } from "@/components/workspace/token-usage-indicator";
 import { Welcome } from "@/components/workspace/welcome";
 import { useI18n } from "@/core/i18n/hooks";
 import { useNotification } from "@/core/notification/hooks";
 import { useLocalSettings } from "@/core/settings";
-import { useThreadStream } from "@/core/threads/hooks";
+import { useThreadRunHealth, useThreadStream, rewindThread } from "@/core/threads/hooks";
 import { textOfMessage } from "@/core/threads/utils";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ export default function ChatPage() {
 
   const { showNotification } = useNotification();
 
-  const [thread, sendMessage, isUploading] = useThreadStream({
+  const [thread, sendMessage, isUploading, observability, refreshThread] = useThreadStream({
     threadId: isNewThread ? undefined : threadId,
     context: settings.context,
     isMock,
@@ -60,6 +60,11 @@ export default function ChatPage() {
       }
     },
   });
+  const runHealthQuery = useThreadRunHealth(threadId, !isNewThread);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   const handleSubmit = useCallback(
     (message: PromptInputMessage) => {
@@ -70,6 +75,35 @@ export default function ChatPage() {
   const handleStop = useCallback(async () => {
     await thread.stop();
   }, [thread]);
+  const handleRefresh = useCallback(() => {
+    void runHealthQuery.refetch();
+  }, [runHealthQuery]);
+  const handleReconnect = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  const [rewindLoading, setRewindLoading] = useState(false);
+  const [rewindFilledText, setRewindFilledText] = useState<string | undefined>(undefined);
+
+  const handleRewind = useCallback(
+    async (turnIndex: number) => {
+      if (!threadId) return;
+      setRewindLoading(true);
+      try {
+        const result = await rewindThread(threadId, turnIndex);
+        setRewindFilledText(result.filled_text);
+        // Force reconnect to re-fetch thread state from the new checkpoint branch
+        await thread.stop();
+        // Clear the filled text after it's been applied
+        setTimeout(() => setRewindFilledText(undefined), 100);
+      } catch (err) {
+        window.alert(err instanceof Error ? err.message : "回退失败");
+      } finally {
+        setRewindLoading(false);
+      }
+    },
+    [threadId, thread],
+  );
 
   return (
     <ThreadContext.Provider value={{ thread, isMock }}>
@@ -86,8 +120,7 @@ export default function ChatPage() {
             <div className="flex w-full items-center text-sm font-medium">
               <ThreadTitle threadId={threadId} thread={thread} />
             </div>
-            <div className="flex items-center gap-2">
-              <TokenUsageIndicator messages={thread.messages} />
+            <div className="flex items-center">
               <ExportTrigger threadId={threadId} />
               <ArtifactTrigger />
             </div>
@@ -98,6 +131,8 @@ export default function ChatPage() {
                 className={cn("size-full", !isNewThread && "pt-10")}
                 threadId={threadId}
                 thread={thread}
+                onRewind={handleRewind}
+                isRewinding={rewindLoading}
               />
             </div>
             <div className="absolute right-0 bottom-0 left-0 z-30 flex justify-center px-4">
@@ -121,6 +156,24 @@ export default function ChatPage() {
                     />
                   </div>
                 </div>
+                <div
+                  className="pointer-events-none absolute right-0 bottom-[calc(100%-0.25rem)] left-0 z-20 flex justify-end"
+                  suppressHydrationWarning
+                >
+                  {hydrated && (
+                    <StreamObservabilityPanel
+                      className="pointer-events-auto w-[min(28rem,calc(100vw-2rem))]"
+                      observability={observability}
+                      runHealth={runHealthQuery.data}
+                      isLoading={thread.isLoading}
+                      isUploading={isUploading}
+                      canStop={thread.isLoading}
+                      onRefresh={handleRefresh}
+                      onReconnect={handleReconnect}
+                      onStop={handleStop}
+                    />
+                  )}
+                </div>
                 <InputBox
                   className={cn("bg-background/5 w-full -translate-y-4")}
                   isNewThread={isNewThread}
@@ -141,6 +194,7 @@ export default function ChatPage() {
                   onContextChange={(context) => setSettings("context", context)}
                   onSubmit={handleSubmit}
                   onStop={handleStop}
+                  initialValue={rewindFilledText}
                 />
                 {env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" && (
                   <div className="text-muted-foreground/67 w-full translate-y-12 text-center text-xs">

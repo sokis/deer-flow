@@ -147,6 +147,13 @@ export function InputBox({
   const { textInput } = usePromptInputController();
   const promptRootRef = useRef<HTMLDivElement | null>(null);
 
+  // When initialValue changes (e.g., after rewind), update the input
+  useEffect(() => {
+    if (initialValue !== undefined && initialValue !== null) {
+      textInput.setInput(initialValue);
+    }
+  }, [initialValue, textInput]);
+
   const [followups, setFollowups] = useState<string[]>([]);
   const [followupsHidden, setFollowupsHidden] = useState(false);
   const [followupsLoading, setFollowupsLoading] = useState(false);

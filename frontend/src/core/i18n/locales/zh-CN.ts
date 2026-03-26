@@ -212,6 +212,86 @@ export const zhCN: Translations = {
     startConversation: "开始新的对话以查看消息",
   },
 
+  observability: {
+    title: "运行观测",
+    bubbleTitle: "运行诊断",
+    hint: "如果长时间只看到 heartbeat，这里会优先给出前端诊断结论，并提供下一步可执行操作。",
+    frontendOnlyHint: "当前结论来自前端事件流判断，尚未接入后端 stuck 真相源。",
+    rationale: "判断依据",
+    actionPlan: "建议处理",
+    activeThread: "观测线程",
+    elapsed: "持续时间",
+    firstResponse: "首个响应",
+    lastProgress: "最近进展",
+    outputMessages: "新增消息",
+    toolCalls: "工具完成",
+    subtasks: "子任务事件",
+    updates: "状态更新",
+    noProgressYet: "尚无",
+    justNow: "刚刚",
+    unboundThread: "未绑定",
+    expand: "展开诊断",
+    collapse: "收起诊断",
+    reconnect: "重新连接",
+    refresh: "刷新状态",
+    stopRun: "停止运行",
+    copyThreadId: "复制线程 ID",
+    copied: "线程 ID 已复制",
+    activeConclusion: "当前判断",
+    recentConclusion: "最近状态",
+    backendTruth: "后端真相源",
+    rawStatus: "原始状态",
+    backendProgress: "后端进展",
+    nextNodes: "下一节点",
+    noNextNode: "无",
+    backendConnectedHint: "当前结论已结合后端运行健康状态，不再只依赖前端事件流推断。",
+    statuses: {
+      uploading: "上传中",
+      waiting: "等待响应",
+      running: "正在处理",
+      silent: "暂时无进展",
+      suspectedStuck: "疑似卡住",
+      completed: "最近已完成",
+      error: "运行异常",
+    },
+    progressKinds: {
+      message: "消息到达",
+      tool: "工具完成",
+      subtask: "子任务更新",
+      update: "状态刷新",
+      finish: "运行结束",
+      none: "暂无",
+    },
+    descriptions: {
+      uploading: "正在准备附件并等待进入正式流式处理。",
+      waiting: "请求已发出，连接可能已建立，正在等待首个业务事件。",
+      running: "正在接收业务事件，可通过下面指标判断是否仍有进展。",
+      silent: "连接仍可能存活，但最近一段时间没有新的业务进展，可能仍在等待模型或工具返回。",
+      suspectedStuck:
+        "连接可能仍然存活，但长时间没有新的业务进展，更像是假活或卡死状态。",
+      completed: "最近一次运行已结束，可结合指标回看本次执行过程。",
+      error: "最近一次运行出现异常，可结合错误信息与时间指标继续排查。",
+    },
+    reasons: {
+      waitingShort: "请求已发出，但还没收到首个业务事件。",
+      waitingLong: "等待首个业务事件时间较长，可能在排队、冷启动或请求未真正推进。",
+      silentShort: "最近没有新的消息、工具完成或子任务更新，可能仍在等待外部返回。",
+      silentLong: "已长时间没有新的业务进展，且当前更像是连接保活而不是实际执行推进。",
+      runningRecent: "最近仍有新的消息、工具完成或状态更新，当前更像是在正常推进。",
+      completedRecent: "最近一次运行已结束，这里保留最近诊断结果方便回看。",
+      errorDetected: "前端已捕获到明确错误，可优先根据错误信息定位问题。",
+    },
+    actions: {
+      waiting: "可以先刷新状态；如果长时间无首个响应，再重新连接或检查后端队列。",
+      running: "建议继续等待；如需中止，可停止当前运行。",
+      silent: "建议先刷新状态；如果多次刷新仍无新进展，再重新连接并检查 run 状态。",
+      suspectedStuck:
+        "建议先复制线程 ID，再刷新状态或重新连接；若仍无变化，停止当前运行并检查后端日志。",
+      completed: "运行已结束，可继续追问或重新发起新一轮请求。",
+      error: "建议复制线程 ID 并查看错误，再重新连接或重新发起请求。",
+    },
+  },
+
   // Chats
   chats: {
     searchChats: "搜索对话",
@@ -261,14 +341,6 @@ export const zhCN: Translations = {
     failed: "子任务失败",
   },
 
-  // Token Usage
-  tokenUsage: {
-    title: "Token 用量",
-    input: "输入",
-    output: "输出",
-    total: "总计",
-  },
-  
   // Shortcuts
   shortcuts: {
     searchActions: "搜索操作...",

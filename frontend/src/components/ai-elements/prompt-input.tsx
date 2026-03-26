@@ -825,6 +825,7 @@ export const PromptInputTextarea = ({
   onChange,
   className,
   placeholder = "What would you like to know?",
+  defaultValue: defaultValueProp,
   ...props
 }: PromptInputTextareaProps) => {
   const controller = useOptionalPromptInputController();
@@ -903,6 +904,12 @@ export const PromptInputTextarea = ({
         onChange,
       };
 
+  // Only pass defaultValue when not using controlled mode to avoid
+  // controlled/uncontrolled conflict that causes hydration mismatch
+  const inputProps = controller
+    ? controlledProps
+    : { ...controlledProps, defaultValue: defaultValueProp };
+
   return (
     <InputGroupTextarea
       className={cn("field-sizing-content max-h-48 min-h-16", className)}
@@ -913,7 +920,7 @@ export const PromptInputTextarea = ({
       onPaste={handlePaste}
       placeholder={placeholder}
       {...props}
-      {...controlledProps}
+      {...inputProps}
     />
   );
 };

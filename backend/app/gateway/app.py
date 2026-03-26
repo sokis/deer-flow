@@ -9,12 +9,13 @@ from app.gateway.routers import (
     agents,
     artifacts,
     channels,
+    health,
     mcp,
     memory,
     models,
+    rewind,
     skills,
     suggestions,
-    threads,
     uploads,
 )
 from deerflow.config.app_config import get_app_config
@@ -129,10 +130,6 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
                 "description": "Upload and manage user files for threads",
             },
             {
-                "name": "threads",
-                "description": "Manage DeerFlow thread-local filesystem data",
-            },
-            {
                 "name": "agents",
                 "description": "Create and manage custom agents with per-agent config and prompts",
             },
@@ -147,6 +144,10 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
             {
                 "name": "health",
                 "description": "Health check and system status endpoints",
+            },
+            {
+                "name": "threads",
+                "description": "Thread management operations including rewind to previous checkpoints",
             },
         ],
     )
@@ -172,14 +173,17 @@ This gateway provides custom endpoints for models, MCP configuration, skills, an
     # Uploads API is mounted at /api/threads/{thread_id}/uploads
     app.include_router(uploads.router)
 
-    # Thread cleanup API is mounted at /api/threads/{thread_id}
-    app.include_router(threads.router)
-
     # Agents API is mounted at /api/agents
     app.include_router(agents.router)
 
     # Suggestions API is mounted at /api/threads/{thread_id}/suggestions
     app.include_router(suggestions.router)
+
+    # Thread health API is mounted at /api/threads/{thread_id}/run-health
+    app.include_router(health.router)
+
+    # Rewind API is mounted at /api/threads/{thread_id}/rewind
+    app.include_router(rewind.router)
 
     # Channels API is mounted at /api/channels
     app.include_router(channels.router)

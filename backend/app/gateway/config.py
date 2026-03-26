@@ -9,6 +9,10 @@ class GatewayConfig(BaseModel):
     host: str = Field(default="0.0.0.0", description="Host to bind the gateway server")
     port: int = Field(default=8001, description="Port to bind the gateway server")
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"], description="Allowed CORS origins")
+    langgraph_internal_url: str = Field(
+        default="http://127.0.0.1:2024",
+        description="Gateway 访问 LangGraph 内部 API 的基础地址",
+    )
 
 
 _gateway_config: GatewayConfig | None = None
@@ -23,5 +27,9 @@ def get_gateway_config() -> GatewayConfig:
             host=os.getenv("GATEWAY_HOST", "0.0.0.0"),
             port=int(os.getenv("GATEWAY_PORT", "8001")),
             cors_origins=cors_origins_str.split(","),
+            langgraph_internal_url=os.getenv(
+                "LANGGRAPH_INTERNAL_URL",
+                "http://127.0.0.1:2024",
+            ),
         )
     return _gateway_config

@@ -223,6 +223,98 @@ export const enUS: Translations = {
     startConversation: "Start a conversation to see messages here",
   },
 
+  observability: {
+    title: "Run observability",
+    bubbleTitle: "Run diagnosis",
+    hint: "If heartbeat keeps the connection alive for too long, this bubble gives a front-end diagnosis first and points to the next action.",
+    frontendOnlyHint:
+      "This conclusion comes from front-end event flow only. A backend stuck truth source is not connected yet.",
+    rationale: "Why this looks likely",
+    actionPlan: "Suggested next step",
+    activeThread: "Observed thread",
+    elapsed: "Elapsed",
+    firstResponse: "First response",
+    lastProgress: "Last progress",
+    outputMessages: "New messages",
+    toolCalls: "Tools finished",
+    subtasks: "Subtask events",
+    updates: "State updates",
+    noProgressYet: "None yet",
+    justNow: "Just now",
+    unboundThread: "Unbound",
+    expand: "Expand diagnosis",
+    collapse: "Collapse diagnosis",
+    reconnect: "Reconnect",
+    refresh: "Refresh status",
+    stopRun: "Stop run",
+    copyThreadId: "Copy thread ID",
+    copied: "Thread ID copied",
+    activeConclusion: "Current conclusion",
+    recentConclusion: "Recent state",
+    backendTruth: "Backend truth",
+    rawStatus: "Raw status",
+    backendProgress: "Backend progress",
+    nextNodes: "Next nodes",
+    noNextNode: "None",
+    backendConnectedHint:
+      "The current conclusion already incorporates backend run health instead of relying only on front-end event flow.",
+    statuses: {
+      uploading: "Uploading",
+      waiting: "Waiting for response",
+      running: "Running",
+      silent: "No recent progress",
+      suspectedStuck: "Possibly stuck",
+      completed: "Recently completed",
+      error: "Run error",
+    },
+    progressKinds: {
+      message: "Message arrived",
+      tool: "Tool finished",
+      subtask: "Subtask update",
+      update: "State refresh",
+      finish: "Run finished",
+      none: "None",
+    },
+    descriptions: {
+      uploading: "Preparing attachments before the stream begins.",
+      waiting: "The request is out and the connection may be alive, waiting for the first business event.",
+      running: "Business events are arriving. Use the metrics below to judge whether progress still exists.",
+      silent:
+        "The connection may still be alive, but there has been no new business progress for a while. The model or tool may still be working.",
+      suspectedStuck:
+        "The connection may still be alive, but the lack of business progress for a long time looks more like a fake alive or stuck run.",
+      completed: "The latest run has finished. Use the metrics below to review what happened.",
+      error: "The latest run ended with an error. Use the error and timing metrics to continue diagnosis.",
+    },
+    reasons: {
+      waitingShort: "The request is out, but the first business event has not arrived yet.",
+      waitingLong:
+        "The first business event is taking a long time. The run may be queued, cold-starting, or not actually progressing.",
+      silentShort:
+        "There are no new messages, tool completions, or subtask updates for now. The run may still be waiting for an external response.",
+      silentLong:
+        "There has been no new business progress for a long time, and this now looks more like transport keepalive than actual execution progress.",
+      runningRecent:
+        "Recent messages, tool completions, or state updates still exist, so the run is more likely progressing normally.",
+      completedRecent:
+        "The latest run already finished. This keeps the recent diagnosis visible for quick review.",
+      errorDetected:
+        "The front end already captured a concrete error, so diagnosis should start from that error first.",
+    },
+    actions: {
+      waiting:
+        "Refresh the status first. If the first response still does not arrive after a long delay, reconnect or inspect the backend queue.",
+      running: "Wait a bit longer. If you need to stop, terminate the current run.",
+      silent:
+        "Refresh the status first. If multiple refreshes still show no progress, reconnect and inspect the run state.",
+      suspectedStuck:
+        "Copy the thread ID first, then refresh or reconnect. If nothing changes, stop the current run and inspect backend logs.",
+      completed: "The run has finished. You can continue the conversation or send a new request.",
+      error:
+        "Copy the thread ID and review the error first, then reconnect or retry the request.",
+    },
+  },
+
   // Chats
   chats: {
     searchChats: "Search chats",
@@ -274,14 +366,6 @@ export const enUS: Translations = {
     failed: "Subtask failed",
   },
 
-  // Token Usage
-  tokenUsage: {
-    title: "Token Usage",
-    input: "Input",
-    output: "Output",
-    total: "Total",
-  },
-  
   // Shortcuts
   shortcuts: {
     searchActions: "Search actions...",
