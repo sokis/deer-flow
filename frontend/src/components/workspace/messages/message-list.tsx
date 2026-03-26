@@ -1,4 +1,6 @@
 import type { BaseStream } from "@langchain/langgraph-sdk/react";
+import { RotateCcw } from "lucide-react";
+import { useState } from "react";
 
 import {
   Conversation,
@@ -12,9 +14,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RotateCcw } from "lucide-react";
-import { useState } from "react";
-
 import { useI18n } from "@/core/i18n/hooks";
 import {
   extractContentFromMessage,

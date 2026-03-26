@@ -141,6 +141,13 @@ export function useThreadStream({
     listeners.current = { onStart, onFinish, onToolEnd, onRewindSuccess };
   }, [onStart, onFinish, onToolEnd, onRewindSuccess]);
 
+  // Refs to store latest values for use in sendMessage callback
+  // This avoids rebuilding the callback when these values change
+  // Initialized with null! since they'll be updated after thread is defined
+  const threadRef = useRef<ReturnType<typeof useStream<AgentThreadState>> | null>(null);
+  const contextRef = useRef(context);
+
+  // Keep refs updated with latest values - effects are added after thread is defined
   useEffect(() => {
     const normalizedThreadId = threadId ?? null;
     if (!normalizedThreadId) {
@@ -306,6 +313,15 @@ export function useThreadStream({
     },
   });
 
+  // Keep threadRef and contextRef updated with latest values after thread is defined
+  useEffect(() => {
+    threadRef.current = thread;
+  }, [thread]);
+
+  useEffect(() => {
+    contextRef.current = context;
+  }, [context]);
+
   // Optimistic messages shown before the server stream responds
   const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -354,8 +370,16 @@ export function useThreadStream({
       const text = message.text.trim();
 
       // Capture current count before showing optimistic messages
-      prevMsgCountRef.current = thread.messages.length;
-      lastObservedMessageCountRef.current = thread.messages.length;
+      // threadRef.current is guaranteed to be set after mount
+      const currentThread = threadRef.current;
+      const currentContext = contextRef.current;
+      if (!currentThread || !currentContext) {
+        console.error("Thread or context not initialized");
+        sendInFlightRef.current = false;
+        return;
+      }
+      prevMsgCountRef.current = currentThread.messages.length;
+      lastObservedMessageCountRef.current = currentThread.messages.length;
       startObservability(threadId);
 
       // Build optimistic files list with uploading status
@@ -484,7 +508,7 @@ export function useThreadStream({
           }),
         );
 
-        await thread.submit(
+        await currentThread.submit(
           {
             messages: [
               {
@@ -509,17 +533,17 @@ export function useThreadStream({
             },
             context: {
               ...extraContext,
-              ...context,
-              thinking_enabled: context.mode !== "flash",
-              is_plan_mode: context.mode === "pro" || context.mode === "ultra",
-              subagent_enabled: context.mode === "ultra",
+              ...currentContext,
+              thinking_enabled: currentContext.mode !== "flash",
+              is_plan_mode: currentContext.mode === "pro" || currentContext.mode === "ultra",
+              subagent_enabled: currentContext.mode === "ultra",
               reasoning_effort:
-                context.reasoning_effort ??
-                (context.mode === "ultra"
+                currentContext.reasoning_effort ??
+                (currentContext.mode === "ultra"
                   ? "high"
-                  : context.mode === "pro"
+                  : currentContext.mode === "pro"
                     ? "medium"
-                    : context.mode === "thinking"
+                    : currentContext.mode === "thinking"
                       ? "low"
                       : undefined),
               thread_id: threadId,
@@ -537,10 +561,8 @@ export function useThreadStream({
       }
     },
     [
-      thread,
       _handleOnStart,
       t.uploads.uploadingFiles,
-      context,
       queryClient,
       markFailure,
       startObservability,
@@ -561,7 +583,7 @@ export function useThreadStream({
       // Invalidate thread list queries so next fetch gets fresh data.
       // Note: useStream manages its own state; this only invalidates
       // TanStack Query cache for thread list/search queries.
-      queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
+      void queryClient.invalidateQueries({ queryKey: ["threads", "search"] });
     }
   }, [queryClient, onStreamThreadId]);
 

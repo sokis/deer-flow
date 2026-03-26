@@ -9,7 +9,31 @@ import { CommandPalette } from "@/components/workspace/command-palette";
 import { WorkspaceSidebar } from "@/components/workspace/workspace-sidebar";
 import { getLocalSettings, useLocalSettings } from "@/core/settings";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        // Don't retry 4xx errors (client errors)
+        if (
+          error instanceof Error &&
+          "response" in error &&
+          error.response instanceof Object &&
+          "status" in error.response &&
+          typeof error.response.status === "number" &&
+          error.response.status >= 400 &&
+          error.response.status < 500
+        ) {
+          return false;
+        }
+        return failureCount < 3;
+      },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
 export default function WorkspaceLayout({
   children,

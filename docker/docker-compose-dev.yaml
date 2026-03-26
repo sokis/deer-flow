@@ -165,6 +165,8 @@ services:
       # Preserve the .venv built during Docker image build — mounting the full backend/
       # directory above would otherwise shadow it with the (empty) host directory.
       - langgraph-venv:/app/backend/.venv
+      # Persist LangGraph thread metadata and checkpoints
+      - ../backend/.langgraph_api:/app/backend/.langgraph_api
       - ../config.yaml:/app/config.yaml
       - ../extensions_config.json:/app/extensions_config.json
       - ../skills:/app/skills
