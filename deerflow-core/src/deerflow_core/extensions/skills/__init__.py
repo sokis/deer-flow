@@ -124,14 +124,18 @@ class FileSkillLoader(SkillLoader):
         if current_key:
             metadata[current_key] = "\n".join(current_lines)
 
+        def _strip_list(value: str) -> list[str]:
+            """Split comma-separated value and strip whitespace."""
+            return [v.strip() for v in value.split(",") if v.strip()]
+
         return SkillMetadata(
             name=metadata.get("name", path.parent.name),
             description=metadata.get("description", ""),
             version=metadata.get("version", "1.0.0"),
             author=metadata.get("author"),
             license=metadata.get("license"),
-            tags=metadata.get("tags", "").split(",") if metadata.get("tags") else [],
-            allowed_tools=metadata.get("allowed_tools", "").split(",") if metadata.get("allowed_tools") else [],
+            tags=_strip_list(metadata.get("tags", "")) if metadata.get("tags") else [],
+            allowed_tools=_strip_list(metadata.get("allowed-tools", "")) if metadata.get("allowed-tools") else [],
         )
 
 

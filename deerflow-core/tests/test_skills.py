@@ -51,8 +51,9 @@ This is a test skill.
         skill_dir = tmp_path / "empty-skill"
         skill_dir.mkdir()
 
-        loader = FileSkillLoader(tmp_path)
-        skill = loader.load_skill(skill_dir)
+        # Create FileBasedSkill directly without loader
+        metadata = SkillMetadata(name="empty-skill", description="Empty skill")
+        skill = FileBasedSkill(metadata=metadata, path=skill_dir)
 
         class MockContext:
             pass
