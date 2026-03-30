@@ -97,9 +97,9 @@ export function MessageList({
             }
             return (
               <div key={`${group.id}`} className="group relative">
-                {group.messages.map((msg) => (
+                {group.messages.map((msg, idx) => (
                   <MessageListItem
-                    key={`${group.id}/${msg.id}`}
+                    key={msg.id ?? `${group.id}/msg-${idx}`}
                     message={msg}
                     isLoading={thread.isLoading}
                   />

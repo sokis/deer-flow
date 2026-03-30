@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language Preference
+
+**使用简体中文回复，所有文档和注释使用中文。**
+
 ## Project Overview
 
 DeerFlow is a full-stack "super agent harness" built on LangGraph + FastAPI with sandbox execution, memory, subagents, and skills.

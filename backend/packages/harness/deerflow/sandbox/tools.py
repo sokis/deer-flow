@@ -1,4 +1,6 @@
+import logging
 import re
+import time
 from pathlib import Path
 
 from langchain.tools import ToolRuntime, tool
@@ -14,6 +16,8 @@ from deerflow.sandbox.exceptions import (
 from deerflow.sandbox.sandbox import Sandbox
 from deerflow.sandbox.sandbox_provider import get_sandbox_provider
 
+logger = logging.getLogger(__name__)
+
 _ABSOLUTE_PATH_PATTERN = re.compile(r"(?<![:\w])/(?:[^\s\"'`;&|<>()]+)")
 _LOCAL_BASH_SYSTEM_PATH_PREFIXES = (
     "/bin/",
@@ -26,6 +30,22 @@ _LOCAL_BASH_SYSTEM_PATH_PREFIXES = (
 
 _DEFAULT_SKILLS_CONTAINER_PATH = "/mnt/skills"
 _ACP_WORKSPACE_VIRTUAL_PATH = "/mnt/acp-workspace"
+
+
+def _log_tool_timing(tool_name: str, thread_id: str | None, started: float, completed: float, success: bool) -> None:
+    """Log tool execution timing.
+
+    Args:
+        tool_name: Name of the tool
+        thread_id: Thread ID if available
+        started: Start timestamp from time.time()
+        completed: Completion timestamp from time.time()
+        success: Whether the tool executed successfully
+    """
+    elapsed_ms = int((completed - started) * 1000)
+    status = "ok" if success else "error"
+    thread_str = f"thread={thread_id}" if thread_id else "thread=unknown"
+    logger.info(f"[TOOL TIMING] {tool_name} {thread_str} elapsed={elapsed_ms}ms status={status}")
 
 
 def _get_skills_container_path() -> str:
@@ -694,6 +714,8 @@ def bash_tool(runtime: ToolRuntime[ContextT, ThreadState], description: str, com
         description: Explain why you are running this command in short words. ALWAYS PROVIDE THIS PARAMETER FIRST.
         command: The bash command to execute. Always use absolute paths for files and directories.
     """
+    start_time = time.time()
+    thread_id = runtime.context.get("thread_id") if runtime.context else None
     try:
         sandbox = ensure_sandbox_initialized(runtime)
         ensure_thread_directories_exist(runtime)
@@ -702,13 +724,19 @@ def bash_tool(runtime: ToolRuntime[ContextT, ThreadState], description: str, com
             validate_local_bash_command_paths(command, thread_data)
             command = replace_virtual_paths_in_command(command, thread_data)
             output = sandbox.execute_command(command)
+            _log_tool_timing("bash", thread_id, start_time, time.time(), True)
             return mask_local_paths_in_output(output, thread_data)
-        return sandbox.execute_command(command)
+        result = sandbox.execute_command(command)
+        _log_tool_timing("bash", thread_id, start_time, time.time(), True)
+        return result
     except SandboxError as e:
+        _log_tool_timing("bash", thread_id, start_time, time.time(), False)
         return f"Error: {e}"
     except PermissionError as e:
+        _log_tool_timing("bash", thread_id, start_time, time.time(), False)
         return f"Error: {e}"
     except Exception as e:
+        _log_tool_timing("bash", thread_id, start_time, time.time(), False)
         return f"Error: Unexpected error executing command: {_sanitize_error(e, runtime)}"
 
 
@@ -720,6 +748,8 @@ def ls_tool(runtime: ToolRuntime[ContextT, ThreadState], description: str, path:
         description: Explain why you are listing this directory in short words. ALWAYS PROVIDE THIS PARAMETER FIRST.
         path: The **absolute** path to the directory to list.
     """
+    start_time = time.time()
+    thread_id = runtime.context.get("thread_id") if runtime.context else None
     try:
         sandbox = ensure_sandbox_initialized(runtime)
         ensure_thread_directories_exist(runtime)
@@ -734,16 +764,21 @@ def ls_tool(runtime: ToolRuntime[ContextT, ThreadState], description: str, path:
             else:
                 path = _resolve_and_validate_user_data_path(path, thread_data)
         children = sandbox.list_dir(path)
+        _log_tool_timing("ls", thread_id, start_time, time.time(), True)
         if not children:
             return "(empty)"
         return "\n".join(children)
     except SandboxError as e:
+        _log_tool_timing("ls", thread_id, start_time, time.time(), False)
         return f"Error: {e}"
     except FileNotFoundError:
+        _log_tool_timing("ls", thread_id, start_time, time.time(), False)
         return f"Error: Directory not found: {requested_path}"
     except PermissionError:
+        _log_tool_timing("ls", thread_id, start_time, time.time(), False)
         return f"Error: Permission denied: {requested_path}"
     except Exception as e:
+        _log_tool_timing("ls", thread_id, start_time, time.time(), False)
         return f"Error: Unexpected error listing directory: {_sanitize_error(e, runtime)}"
 
 
@@ -763,6 +798,8 @@ def read_file_tool(
         start_line: Optional starting line number (1-indexed, inclusive). Use with end_line to read a specific range.
         end_line: Optional ending line number (1-indexed, inclusive). Use with start_line to read a specific range.
     """
+    start_time = time.time()
+    thread_id = runtime.context.get("thread_id") if runtime.context else None
     try:
         sandbox = ensure_sandbox_initialized(runtime)
         ensure_thread_directories_exist(runtime)
@@ -777,20 +814,26 @@ def read_file_tool(
             else:
                 path = _resolve_and_validate_user_data_path(path, thread_data)
         content = sandbox.read_file(path)
+        _log_tool_timing("read_file", thread_id, start_time, time.time(), True)
         if not content:
             return "(empty)"
         if start_line is not None and end_line is not None:
             content = "\n".join(content.splitlines()[start_line - 1 : end_line])
         return content
     except SandboxError as e:
+        _log_tool_timing("read_file", thread_id, start_time, time.time(), False)
         return f"Error: {e}"
     except FileNotFoundError:
+        _log_tool_timing("read_file", thread_id, start_time, time.time(), False)
         return f"Error: File not found: {requested_path}"
     except PermissionError:
+        _log_tool_timing("read_file", thread_id, start_time, time.time(), False)
         return f"Error: Permission denied reading file: {requested_path}"
     except IsADirectoryError:
+        _log_tool_timing("read_file", thread_id, start_time, time.time(), False)
         return f"Error: Path is a directory, not a file: {requested_path}"
     except Exception as e:
+        _log_tool_timing("read_file", thread_id, start_time, time.time(), False)
         return f"Error: Unexpected error reading file: {_sanitize_error(e, runtime)}"
 
 
@@ -809,6 +852,8 @@ def write_file_tool(
         path: The **absolute** path to the file to write to. ALWAYS PROVIDE THIS PARAMETER SECOND.
         content: The content to write to the file. ALWAYS PROVIDE THIS PARAMETER THIRD.
     """
+    start_time = time.time()
+    thread_id = runtime.context.get("thread_id") if runtime.context else None
     try:
         sandbox = ensure_sandbox_initialized(runtime)
         ensure_thread_directories_exist(runtime)
@@ -818,16 +863,22 @@ def write_file_tool(
             validate_local_tool_path(path, thread_data)
             path = _resolve_and_validate_user_data_path(path, thread_data)
         sandbox.write_file(path, content, append)
+        _log_tool_timing("write_file", thread_id, start_time, time.time(), True)
         return "OK"
     except SandboxError as e:
+        _log_tool_timing("write_file", thread_id, start_time, time.time(), False)
         return f"Error: {e}"
     except PermissionError:
+        _log_tool_timing("write_file", thread_id, start_time, time.time(), False)
         return f"Error: Permission denied writing to file: {requested_path}"
     except IsADirectoryError:
+        _log_tool_timing("write_file", thread_id, start_time, time.time(), False)
         return f"Error: Path is a directory, not a file: {requested_path}"
     except OSError as e:
+        _log_tool_timing("write_file", thread_id, start_time, time.time(), False)
         return f"Error: Failed to write file '{requested_path}': {_sanitize_error(e, runtime)}"
     except Exception as e:
+        _log_tool_timing("write_file", thread_id, start_time, time.time(), False)
         return f"Error: Unexpected error writing file: {_sanitize_error(e, runtime)}"
 
 

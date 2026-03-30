@@ -160,7 +160,8 @@ export function StreamObservabilityPanel({
     ) {
       return "completed";
     }
-    if (runHealth?.truth_phase === "stuck") {
+    // Backend-reported stuck takes priority over frontend detection
+    if (runHealth?.truth_phase === "stuck" || runHealth?.is_stuck) {
       return "suspectedStuck";
     }
     if (runHealth?.truth_phase === "waiting") {
@@ -187,6 +188,7 @@ export function StreamObservabilityPanel({
     return "completed";
   }, [
     runHealth?.truth_phase,
+    runHealth?.is_stuck,
     isLoading,
     isUploading,
     now,
@@ -474,6 +476,21 @@ export function StreamObservabilityPanel({
                       <div className="text-sm leading-6">
                         {t.observability.nextNodes}：{nextNodesText}
                       </div>
+                      {runHealth.model_name && (
+                        <div className="text-sm leading-6">
+                          Model：{runHealth.model_name}
+                        </div>
+                      )}
+                      {runHealth.is_stuck && runHealth.stuck_reason && (
+                        <div className="text-sm leading-6 text-destructive">
+                          Stuck Reason：{runHealth.stuck_reason}
+                        </div>
+                      )}
+                      {runHealth.last_message_at && (
+                        <div className="text-sm leading-6">
+                          Last Message：{runHealth.last_message_at}
+                        </div>
+                      )}
                     </div>
                   )}
                   <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">

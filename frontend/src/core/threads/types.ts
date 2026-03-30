@@ -66,4 +66,9 @@ export interface ThreadRunHealth {
   idle_seconds: number | null;
   message_count: number;
   next_nodes: string[];
+  // Stuck detection fields
+  is_stuck?: boolean;
+  stuck_reason?: string | null;
+  last_message_at?: string | null;
+  model_name?: string | null;
 }

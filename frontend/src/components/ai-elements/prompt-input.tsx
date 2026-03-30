@@ -972,6 +972,7 @@ export const PromptInputButton = ({
   variant = "ghost",
   className,
   size,
+  suppressHydrationWarning,
   ...props
 }: PromptInputButtonProps) => {
   return (
@@ -980,6 +981,7 @@ export const PromptInputButton = ({
       size="sm"
       type="button"
       variant={variant}
+      suppressHydrationWarning={suppressHydrationWarning}
       {...props}
     />
   );
@@ -995,10 +997,15 @@ export type PromptInputActionMenuTriggerProps = PromptInputButtonProps;
 export const PromptInputActionMenuTrigger = ({
   className,
   children,
+  suppressHydrationWarning = true,
   ...props
 }: PromptInputActionMenuTriggerProps) => (
   <DropdownMenuTrigger asChild>
-    <PromptInputButton className={className} {...props}>
+    <PromptInputButton
+      className={className}
+      suppressHydrationWarning={suppressHydrationWarning}
+      {...props}
+    >
       {children ?? <PlusIcon className="size-4" />}
     </PromptInputButton>
   </DropdownMenuTrigger>

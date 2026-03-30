@@ -190,6 +190,8 @@ models:
   #   base_url: https://api.minimaxi.com/v1
   #   max_tokens: 4096
   #   temperature: 1.0  # MiniMax requires temperature in (0.0, 1.0]
+  #   timeout: 120  # Request timeout in seconds (prevents hanging)
+  #   max_retries: 3  # Number of retries on failure
   #   supports_vision: true
 
   # - name: minimax-m2.5-highspeed
@@ -200,6 +202,8 @@ models:
   #   base_url: https://api.minimaxi.com/v1
   #   max_tokens: 4096
   #   temperature: 1.0  # MiniMax requires temperature in (0.0, 1.0]
+  #   timeout: 120  # Request timeout in seconds (prevents hanging)
+  #   max_retries: 3  # Number of retries on failure
   #   supports_vision: true
 
   
