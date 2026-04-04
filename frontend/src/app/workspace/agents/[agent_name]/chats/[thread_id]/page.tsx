@@ -11,11 +11,7 @@ import { ArtifactTrigger } from "@/components/workspace/artifacts";
 import { ChatBox, useThreadChat } from "@/components/workspace/chats";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import { InputBox } from "@/components/workspace/input-box";
-import {
-  MessageList,
-  MESSAGE_LIST_DEFAULT_PADDING_BOTTOM,
-  MESSAGE_LIST_FOLLOWUPS_EXTRA_PADDING_BOTTOM,
-} from "@/components/workspace/messages";
+import { MessageList } from "@/components/workspace/messages";
 import { ThreadContext } from "@/components/workspace/messages/context";
 import { StreamObservabilityPanel } from "@/components/workspace/stream-observability-panel";
 import { ThreadTitle } from "@/components/workspace/thread-title";
@@ -24,7 +20,7 @@ import { Tooltip } from "@/components/workspace/tooltip";
 import { useAgent } from "@/core/agents";
 import { useI18n } from "@/core/i18n/hooks";
 import { useNotification } from "@/core/notification/hooks";
-import { useLocalSettings } from "@/core/settings";
+import { useThreadSettings } from "@/core/settings";
 import { rewindThread, useThreadRunHealth, useThreadStream } from "@/core/threads/hooks";
 import { textOfMessage } from "@/core/threads/utils";
 import { env } from "@/env";
@@ -32,7 +28,6 @@ import { cn } from "@/lib/utils";
 
 export default function AgentChatPage() {
   const { t } = useI18n();
-  const [showFollowups, setShowFollowups] = useState(false);
   const router = useRouter();
 
   const { agent_name } = useParams<{
@@ -45,7 +40,7 @@ export default function AgentChatPage() {
   const [settings, setSettings] = useThreadSettings(threadId);
 
   const { showNotification } = useNotification();
-  const [thread, sendMessage, isUploading, observability, refreshThread] = useThreadStream({
+  const [thread, sendMessage, isUploading, observability] = useThreadStream({
     threadId: isNewThread ? undefined : threadId,
     context: { ...settings.context, agent_name: agent_name },
     onStart: () => {
@@ -118,11 +113,6 @@ export default function AgentChatPage() {
     },
     [threadId, thread],
   );
-
-  const messageListPaddingBottom = showFollowups
-    ? MESSAGE_LIST_DEFAULT_PADDING_BOTTOM +
-      MESSAGE_LIST_FOLLOWUPS_EXTRA_PADDING_BOTTOM
-    : undefined;
 
   return (
     <ThreadContext.Provider value={{ thread }}>
@@ -236,7 +226,6 @@ export default function AgentChatPage() {
                   }
                   disabled={env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY === "true" || isUploading}
                   onContextChange={(context) => setSettings("context", context)}
-                  onFollowupsVisibilityChange={setShowFollowups}
                   onSubmit={handleSubmit}
                   onStop={handleStop}
                 />

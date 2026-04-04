@@ -11,11 +11,7 @@ import {
 } from "@/components/workspace/chats";
 import { ExportTrigger } from "@/components/workspace/export-trigger";
 import { InputBox } from "@/components/workspace/input-box";
-import {
-  MessageList,
-  MESSAGE_LIST_DEFAULT_PADDING_BOTTOM,
-  MESSAGE_LIST_FOLLOWUPS_EXTRA_PADDING_BOTTOM,
-} from "@/components/workspace/messages";
+import { MessageList } from "@/components/workspace/messages";
 import { ThreadContext } from "@/components/workspace/messages/context";
 import { StreamObservabilityPanel } from "@/components/workspace/stream-observability-panel";
 import { ThreadTitle } from "@/components/workspace/thread-title";
@@ -23,7 +19,7 @@ import { TodoList } from "@/components/workspace/todo-list";
 import { Welcome } from "@/components/workspace/welcome";
 import { useI18n } from "@/core/i18n/hooks";
 import { useNotification } from "@/core/notification/hooks";
-import { useLocalSettings } from "@/core/settings";
+import { useThreadSettings } from "@/core/settings";
 import { useThreadRunHealth, useThreadStream, rewindThread } from "@/core/threads/hooks";
 import { textOfMessage } from "@/core/threads/utils";
 import { env } from "@/env";
@@ -31,14 +27,13 @@ import { cn } from "@/lib/utils";
 
 export default function ChatPage() {
   const { t } = useI18n();
-  const [showFollowups, setShowFollowups] = useState(false);
   const { threadId, isNewThread, setIsNewThread, isMock } = useThreadChat();
   const [settings, setSettings] = useThreadSettings(threadId);
   useSpecificChatMode();
 
   const { showNotification } = useNotification();
 
-  const [thread, sendMessage, isUploading, observability, refreshThread] = useThreadStream({
+  const [thread, sendMessage, isUploading, observability] = useThreadStream({
     threadId: isNewThread ? undefined : threadId,
     context: settings.context,
     isMock,
@@ -108,11 +103,6 @@ export default function ChatPage() {
     },
     [threadId, thread],
   );
-
-  const messageListPaddingBottom = showFollowups
-    ? MESSAGE_LIST_DEFAULT_PADDING_BOTTOM +
-      MESSAGE_LIST_FOLLOWUPS_EXTRA_PADDING_BOTTOM
-    : undefined;
 
   return (
     <ThreadContext.Provider value={{ thread, isMock }}>
@@ -204,7 +194,6 @@ export default function ChatPage() {
                     isUploading
                   }
                   onContextChange={(context) => setSettings("context", context)}
-                  onFollowupsVisibilityChange={setShowFollowups}
                   onSubmit={handleSubmit}
                   onStop={handleStop}
                   initialValue={rewindFilledText}
