@@ -1,7 +1,7 @@
 """Middleware for injecting image details into conversation before LLM call."""
 
 import logging
-from typing import Annotated, NotRequired, override
+from typing import Annotated, override
 
 from langchain.agents import AgentState
 from langchain.agents.middleware import AgentMiddleware

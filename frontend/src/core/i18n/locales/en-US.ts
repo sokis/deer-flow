@@ -387,8 +387,6 @@ export const enUS: Translations = {
     failed: "Subtask failed",
   },
 
-<<<<<<< HEAD
-=======
   // Token Usage
   tokenUsage: {
     title: "Token Usage",
@@ -396,8 +394,6 @@ export const enUS: Translations = {
     output: "Output",
     total: "Total",
   },
-
->>>>>>> upstream/main
   // Shortcuts
   shortcuts: {
     searchActions: "Search actions...",

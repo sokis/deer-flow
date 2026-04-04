@@ -1,4 +1,5 @@
 """Rewind router - restore thread state to a previous checkpoint."""
+
 import logging
 
 import httpx
@@ -86,10 +87,7 @@ async def rewind_thread(thread_id: str, body: RewindRequest) -> RewindResponse:
             break
 
     if target_checkpoint is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Turn index {target_idx} out of range (max: {_human_count(oldest_first[-1]) - 1})"
-        )
+        raise HTTPException(status_code=404, detail=f"Turn index {target_idx} out of range (max: {_human_count(oldest_first[-1]) - 1})")
 
     # Fork from the target checkpoint to restore server-side state.
     # POST /threads/{tid}/state with checkpoint_id and empty values creates a new

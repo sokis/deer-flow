@@ -22,8 +22,8 @@ import httpx
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from app.gateway.deps import get_checkpointer, get_store
 from app.gateway.config import get_gateway_config
+from app.gateway.deps import get_checkpointer, get_store
 from deerflow.config.paths import Paths, get_paths
 from deerflow.runtime import serialize_channel_values
 
@@ -74,6 +74,7 @@ async def _fetch_langgraph_json(client: httpx.AsyncClient, base_url: str, path: 
     response = await client.get(f"{base_url}{path}")
     response.raise_for_status()
     return response.json()
+
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/threads", tags=["threads"])
@@ -791,7 +792,6 @@ async def get_thread_run_health(
             metadata = state_data.get("metadata", {})
 
             # Get checkpoint info
-            checkpoint_id = metadata.get("checkpoint_id")
             checkpoint_created_at_ts = metadata.get("created_at")
 
             # Get messages from state
@@ -800,11 +800,9 @@ async def get_thread_run_health(
 
             # Get last message time
             last_message_at = None
-            last_message_source = None
             if messages:
                 last_msg = messages[-1]
                 if isinstance(last_msg, dict):
-                    last_message_source = last_msg.get("type")
                     # Get timestamp if available
                     if "created_at" in last_msg:
                         last_message_at = str(last_msg["created_at"])

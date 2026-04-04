@@ -2,11 +2,7 @@
 
 import { BotIcon, PlusSquare } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-<<<<<<< HEAD
 import { useCallback, useEffect, useState } from "react";
-=======
-import { useCallback, useState } from "react";
->>>>>>> upstream/main
 
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
 import { Button } from "@/components/ui/button";
@@ -28,13 +24,8 @@ import { Tooltip } from "@/components/workspace/tooltip";
 import { useAgent } from "@/core/agents";
 import { useI18n } from "@/core/i18n/hooks";
 import { useNotification } from "@/core/notification/hooks";
-<<<<<<< HEAD
 import { useLocalSettings } from "@/core/settings";
 import { rewindThread, useThreadRunHealth, useThreadStream } from "@/core/threads/hooks";
-=======
-import { useThreadSettings } from "@/core/settings";
-import { useThreadStream } from "@/core/threads/hooks";
->>>>>>> upstream/main
 import { textOfMessage } from "@/core/threads/utils";
 import { env } from "@/env";
 import { cn } from "@/lib/utils";
@@ -179,12 +170,8 @@ export default function AgentChatPage() {
                 className={cn("size-full", !isNewThread && "pt-10")}
                 threadId={threadId}
                 thread={thread}
-<<<<<<< HEAD
                 onRewind={handleRewind}
                 isRewinding={rewindLoading}
-=======
-                paddingBottom={messageListPaddingBottom}
->>>>>>> upstream/main
               />
             </div>
 

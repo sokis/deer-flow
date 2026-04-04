@@ -304,8 +304,6 @@ export interface Translations {
     failed: string;
   };
 
-<<<<<<< HEAD
-=======
   // Token Usage
   tokenUsage: {
     title: string;
@@ -313,8 +311,6 @@ export interface Translations {
     output: string;
     total: string;
   };
-
->>>>>>> upstream/main
   // Shortcuts
   shortcuts: {
     searchActions: string;

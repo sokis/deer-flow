@@ -361,8 +361,6 @@ export const zhCN: Translations = {
     failed: "子任务失败",
   },
 
-<<<<<<< HEAD
-=======
   // Token Usage
   tokenUsage: {
     title: "Token 用量",
@@ -370,8 +368,6 @@ export const zhCN: Translations = {
     output: "输出",
     total: "总计",
   },
-
->>>>>>> upstream/main
   // Shortcuts
   shortcuts: {
     searchActions: "搜索操作...",
