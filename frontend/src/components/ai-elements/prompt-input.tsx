@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { isIMEComposing } from "@/lib/ime";
 import { cn } from "@/lib/utils";
 import type { ChatStatus, FileUIPart } from "ai";
 import {
@@ -834,7 +835,7 @@ export const PromptInputTextarea = ({
 
   const handleKeyDown: KeyboardEventHandler<HTMLTextAreaElement> = (e) => {
     if (e.key === "Enter") {
-      if (isComposing || e.nativeEvent.isComposing) {
+      if (isIMEComposing(e, isComposing)) {
         return;
       }
       if (e.shiftKey) {
@@ -1142,6 +1143,8 @@ export const PromptInputSpeechButton = ({
     null,
   );
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const callbacksRef = useRef({ textareaRef, onTranscriptionChange });
+  callbacksRef.current = { textareaRef, onTranscriptionChange };
 
   useEffect(() => {
     if (
@@ -1174,15 +1177,19 @@ export const PromptInputSpeechButton = ({
           }
         }
 
-        if (finalTranscript && textareaRef?.current) {
-          const textarea = textareaRef.current;
+        const currentTextareaRef = callbacksRef.current.textareaRef;
+        const currentOnTranscriptionChange =
+          callbacksRef.current.onTranscriptionChange;
+
+        if (finalTranscript && currentTextareaRef?.current) {
+          const textarea = currentTextareaRef.current;
           const currentValue = textarea.value;
           const newValue =
             currentValue + (currentValue ? " " : "") + finalTranscript;
 
           textarea.value = newValue;
           textarea.dispatchEvent(new Event("input", { bubbles: true }));
-          onTranscriptionChange?.(newValue);
+          currentOnTranscriptionChange?.(newValue);
         }
       };
 
@@ -1200,7 +1207,7 @@ export const PromptInputSpeechButton = ({
         recognitionRef.current.stop();
       }
     };
-  }, [textareaRef, onTranscriptionChange]);
+  }, []);
 
   const toggleListening = useCallback(() => {
     if (!recognition) {

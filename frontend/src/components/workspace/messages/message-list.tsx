@@ -60,11 +60,15 @@ function RewindButton({
   );
 }
 
+export const MESSAGE_LIST_DEFAULT_PADDING_BOTTOM = 160;
+export const MESSAGE_LIST_FOLLOWUPS_EXTRA_PADDING_BOTTOM = 80;
+>>>>>>> upstream/main
+
 export function MessageList({
   className,
   threadId,
   thread,
-  paddingBottom = 160,
+  paddingBottom = MESSAGE_LIST_DEFAULT_PADDING_BOTTOM,
   onRewind,
   isRewinding,
 }: {

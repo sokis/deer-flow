@@ -11,7 +11,6 @@ The provider itself handles:
 """
 
 import atexit
-import fcntl
 import hashlib
 import logging
 import os
@@ -20,8 +19,14 @@ import threading
 import time
 import uuid
 
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - Windows fallback
+    fcntl = None  # type: ignore[assignment]
+    import msvcrt
+
 from deerflow.config import get_app_config
-from deerflow.config.paths import VIRTUAL_PATH_PREFIX, Paths, get_paths
+from deerflow.config.paths import VIRTUAL_PATH_PREFIX, get_paths
 from deerflow.sandbox.sandbox import Sandbox
 from deerflow.sandbox.sandbox_provider import SandboxProvider
 
@@ -40,6 +45,24 @@ DEFAULT_CONTAINER_PREFIX = "deer-flow-sandbox"
 DEFAULT_IDLE_TIMEOUT = 600  # 10 minutes in seconds
 DEFAULT_REPLICAS = 3  # Maximum concurrent sandbox containers
 IDLE_CHECK_INTERVAL = 60  # Check every 60 seconds
+
+
+def _lock_file_exclusive(lock_file) -> None:
+    if fcntl is not None:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        return
+
+    lock_file.seek(0)
+    msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
+
+
+def _unlock_file(lock_file) -> None:
+    if fcntl is not None:
+        fcntl.flock(lock_file, fcntl.LOCK_UN)
+        return
+
+    lock_file.seek(0)
+    msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
 
 
 class AioSandboxProvider(SandboxProvider):
@@ -191,17 +214,13 @@ class AioSandboxProvider(SandboxProvider):
         paths = get_paths()
         paths.ensure_thread_dirs(thread_id)
 
-        # host_paths resolves to the host-side base dir when DEER_FLOW_HOST_BASE_DIR
-        # is set, otherwise falls back to the container's own base dir (native mode).
-        host_paths = Paths(base_dir=paths.host_base_dir)
-
         return [
-            (str(host_paths.sandbox_work_dir(thread_id)), f"{VIRTUAL_PATH_PREFIX}/workspace", False),
-            (str(host_paths.sandbox_uploads_dir(thread_id)), f"{VIRTUAL_PATH_PREFIX}/uploads", False),
-            (str(host_paths.sandbox_outputs_dir(thread_id)), f"{VIRTUAL_PATH_PREFIX}/outputs", False),
+            (paths.host_sandbox_work_dir(thread_id), f"{VIRTUAL_PATH_PREFIX}/workspace", False),
+            (paths.host_sandbox_uploads_dir(thread_id), f"{VIRTUAL_PATH_PREFIX}/uploads", False),
+            (paths.host_sandbox_outputs_dir(thread_id), f"{VIRTUAL_PATH_PREFIX}/outputs", False),
             # ACP workspace: read-only inside the sandbox (lead agent reads results;
             # the ACP subprocess writes from the host side, not from within the container).
-            (str(host_paths.acp_workspace_dir(thread_id)), "/mnt/acp-workspace", True),
+            (paths.host_acp_workspace_dir(thread_id), "/mnt/acp-workspace", True),
         ]
 
     @staticmethod
@@ -405,8 +424,10 @@ class AioSandboxProvider(SandboxProvider):
         lock_path = paths.thread_dir(thread_id) / f"{sandbox_id}.lock"
 
         with open(lock_path, "a", encoding="utf-8") as lock_file:
+            locked = False
             try:
-                fcntl.flock(lock_file, fcntl.LOCK_EX)
+                _lock_file_exclusive(lock_file)
+                locked = True
                 # Re-check in-process caches under the file lock in case another
                 # thread in this process won the race while we were waiting.
                 with self._lock:
@@ -440,7 +461,8 @@ class AioSandboxProvider(SandboxProvider):
 
                 return self._create_sandbox(thread_id, sandbox_id)
             finally:
-                fcntl.flock(lock_file, fcntl.LOCK_UN)
+                if locked:
+                    _unlock_file(lock_file)
 
     def _evict_oldest_warm(self) -> str | None:
         """Destroy the oldest container in the warm pool to free capacity.

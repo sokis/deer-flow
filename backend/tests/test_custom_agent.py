@@ -164,6 +164,28 @@ class TestLoadAgentConfig:
 
         assert cfg.tool_groups == ["file:read", "file:write"]
 
+    def test_load_config_with_skills_empty_list(self, tmp_path):
+        config_dict = {"name": "no-skills-agent", "skills": []}
+        _write_agent(tmp_path, "no-skills-agent", config_dict)
+
+        with patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(tmp_path)):
+            from deerflow.config.agents_config import load_agent_config
+
+            cfg = load_agent_config("no-skills-agent")
+
+        assert cfg.skills == []
+
+    def test_load_config_with_skills_omitted(self, tmp_path):
+        config_dict = {"name": "default-skills-agent"}
+        _write_agent(tmp_path, "default-skills-agent", config_dict)
+
+        with patch("deerflow.config.agents_config.get_paths", return_value=_make_paths(tmp_path)):
+            from deerflow.config.agents_config import load_agent_config
+
+            cfg = load_agent_config("default-skills-agent")
+
+        assert cfg.skills is None
+
     def test_legacy_prompt_file_field_ignored(self, tmp_path):
         """Unknown fields like the old prompt_file should be silently ignored."""
         agent_dir = tmp_path / "agents" / "legacy-agent"
@@ -304,39 +326,42 @@ class TestListCustomAgents:
 class TestMemoryFilePath:
     def test_global_memory_path(self, tmp_path):
         """None agent_name should return global memory file."""
-        import deerflow.agents.memory.updater as updater_mod
+        from deerflow.agents.memory.storage import FileMemoryStorage
         from deerflow.config.memory_config import MemoryConfig
 
         with (
-            patch("deerflow.agents.memory.updater.get_paths", return_value=_make_paths(tmp_path)),
-            patch("deerflow.agents.memory.updater.get_memory_config", return_value=MemoryConfig(storage_path="")),
+            patch("deerflow.agents.memory.storage.get_paths", return_value=_make_paths(tmp_path)),
+            patch("deerflow.agents.memory.storage.get_memory_config", return_value=MemoryConfig(storage_path="")),
         ):
-            path = updater_mod._get_memory_file_path(None)
+            storage = FileMemoryStorage()
+            path = storage._get_memory_file_path(None)
         assert path == tmp_path / "memory.json"
 
     def test_agent_memory_path(self, tmp_path):
         """Providing agent_name should return per-agent memory file."""
-        import deerflow.agents.memory.updater as updater_mod
+        from deerflow.agents.memory.storage import FileMemoryStorage
         from deerflow.config.memory_config import MemoryConfig
 
         with (
-            patch("deerflow.agents.memory.updater.get_paths", return_value=_make_paths(tmp_path)),
-            patch("deerflow.agents.memory.updater.get_memory_config", return_value=MemoryConfig(storage_path="")),
+            patch("deerflow.agents.memory.storage.get_paths", return_value=_make_paths(tmp_path)),
+            patch("deerflow.agents.memory.storage.get_memory_config", return_value=MemoryConfig(storage_path="")),
         ):
-            path = updater_mod._get_memory_file_path("code-reviewer")
+            storage = FileMemoryStorage()
+            path = storage._get_memory_file_path("code-reviewer")
         assert path == tmp_path / "agents" / "code-reviewer" / "memory.json"
 
     def test_different_paths_for_different_agents(self, tmp_path):
-        import deerflow.agents.memory.updater as updater_mod
+        from deerflow.agents.memory.storage import FileMemoryStorage
         from deerflow.config.memory_config import MemoryConfig
 
         with (
-            patch("deerflow.agents.memory.updater.get_paths", return_value=_make_paths(tmp_path)),
-            patch("deerflow.agents.memory.updater.get_memory_config", return_value=MemoryConfig(storage_path="")),
+            patch("deerflow.agents.memory.storage.get_paths", return_value=_make_paths(tmp_path)),
+            patch("deerflow.agents.memory.storage.get_memory_config", return_value=MemoryConfig(storage_path="")),
         ):
-            path_global = updater_mod._get_memory_file_path(None)
-            path_a = updater_mod._get_memory_file_path("agent-a")
-            path_b = updater_mod._get_memory_file_path("agent-b")
+            storage = FileMemoryStorage()
+            path_global = storage._get_memory_file_path(None)
+            path_a = storage._get_memory_file_path("agent-a")
+            path_b = storage._get_memory_file_path("agent-b")
 
         assert path_global != path_a
         assert path_global != path_b
